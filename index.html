@@ -61,10 +61,11 @@
     <div id="lb-host" hidden>
       <label class="muted" for="lb-pick">اللعبة</label>
       <select id="lb-pick"></select>
+      <div id="lb-settings" class="settings"></div>
       <button class="stamp" id="btn-start">ابدأ اللعب</button>
       <p class="hint" id="lb-need"></p>
     </div>
-    <p class="hint" id="lb-guest" hidden>مستني صاحب الأوضة يبدأ…</p>
+    <div id="lb-guest" hidden><div class="strip" id="lb-set-sum"></div><p class="hint">مستني صاحب الأوضة يبدأ…</p></div>
     <div class="spacer"></div>
     <button class="ghost" id="btn-lobby-leave">اخرج من الأوضة</button>
   </section>
@@ -103,6 +104,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="js/kit.js"></script>
 <script src="games/bingo.js"></script>
+<script src="games/alwan.js"></script>
+<script src="games/ludo.js"></script>
+<script src="games/draw.js"></script>
 <script src="games/soon.js"></script>
 <script src="js/app.js"></script>
 </body>

@@ -98,7 +98,7 @@ function connect(){
   setUrl(R.code);
   if (!window.supabase) { wait('الأونلاين مش شغال هنا', 'افتح لمّة من اللينك ده:', { link:true }); return; }
   wait('بيوصل…', 'ثانية واحدة');
-  sb = sb || window.supabase.createClient(SB_URL, SB_KEY, { auth:{ persistSession:false } });
+  sb = sb || window.supabase.createClient(SB_URL, SB_KEY, { auth:{ persistSession:false }, realtime:{ params:{ eventsPerSecond:30 } } });
   if (R.ch) { try { sb.removeChannel(R.ch); } catch(e){} }
   const ch = sb.channel('lamma-' + R.code, { config:{ broadcast:{ self:false }, presence:{ key:PID } } });
   R.ch = ch; R.peers = []; R.connected = false;
@@ -116,11 +116,12 @@ function connect(){
     }
   });
   clearInterval(beat); beat = setInterval(heartbeat, 2500);
+  clearInterval(R.ticker); R.ticker = setInterval(hostTick, 1000);
 }
 function hello(){ send({ t:'hello', pid:PID, name:myName }); }
 
 function leave(){
-  clearInterval(beat);
+  clearInterval(beat); if (R) clearInterval(R.ticker);
   if (R && !R.host && R.room && R.room.phase === 'lobby') send({ t:'leave', pid:PID });
   if (R && R.host && R.room && R.room.phase === 'lobby' && R.room.players.length <= 1) K.drop('lamma-room-' + R.code);
   try { R && R.ch && sb.removeChannel(R.ch); } catch(e){}
@@ -131,6 +132,7 @@ function leave(){
 function pushState(){
   if (!R || !R.host) return;
   R.room.v++;
+  R.room.t = Date.now();
   saveHost();
   send({ t:'state', room:R.room });
   sendPrivs();
@@ -151,10 +153,26 @@ function startGame(gameId){
   room.game = g.id;
   room.seats = room.players.slice(0, g.max).map(p => p.id);
   room.round++;
-  room.pub = g.init(room.seats.length, prevSame);
+  room.pub = g.init(room.seats.length, prevSame, settingsFor(g));
   R.secret = g.secrets ? g.secrets(room.pub, room.seats.length) : [];
   room.phase = 'game';
   pushState();
+}
+function settingsFor(g){
+  const chosen = (R.room.settings || {})[g.id] || {};
+  const out = {};
+  (g.settings || []).forEach(s => out[s.key] = chosen[s.key] ?? s.def);
+  return out;
+}
+/* games with a clock: the host ticks them every second */
+function hostTick(){
+  if (!R || !R.host || R.room.phase !== 'game') return;
+  const g = K.game(R.room.game);
+  if (!g.tick) return;
+  const S = { pub:R.room.pub, secret:R.secret, n:R.room.seats.length, hostSeat:hostSeat(), now:Date.now() };
+  let changed = false;
+  try { changed = g.tick(S); } catch(e){ console.error(e); }
+  if (changed) { R.room.pub = S.pub; R.secret = S.secret; pushState(); }
 }
 function hostApply(pid, a){
   const room = R.room;
@@ -162,7 +180,7 @@ function hostApply(pid, a){
   const seat = seatsOf(room).indexOf(pid);
   if (seat < 0) return;
   const g = K.game(room.game);
-  const S = { pub:room.pub, secret:R.secret, n:room.seats.length, hostSeat:hostSeat() };
+  const S = { pub:room.pub, secret:R.secret, n:room.seats.length, hostSeat:hostSeat(), now:Date.now() };
   try { g.act(S, seat, a); } catch(e){ console.error(e); }
   room.pub = S.pub; R.secret = S.secret;
 }
@@ -197,12 +215,23 @@ function onGuest(m){
   const room = m.room;
   if (R.room && room.v < R.room.v && room.round === R.room.round) return;   // stale
   R.room = room;
+  if (room.t) R.skew = room.t - Date.now();
   if (!room.players.some(p => p.id === PID)) { hello(); }
   const ack = room.acks[PID];
   if (ack && ack.sid === SID) R.queue = R.queue.filter(q => q.id > ack.n);
   render();
 }
-function onMsg(m){ if (!R) return; R.host ? onHost(m) : onGuest(m); }
+function onMsg(m){
+  if (!R) return;
+  if (m.t === 'g') {                       // live game message (e.g. drawing strokes), not part of the state
+    if (m.to && m.to !== PID) return;
+    if (!R.room || R.room.phase !== 'game') return;
+    const g = K.game(R.room.game);
+    if (g.onEmit) g.onEmit(ctxFor(), m.data, seatsOf(R.room).indexOf(m.from));
+    return;
+  }
+  R.host ? onHost(m) : onGuest(m);
+}
 
 function heartbeat(){
   if (!R || !R.connected) return;
@@ -247,12 +276,29 @@ function renderLobby(){
   const empties = Math.max(0, Math.min(MAX_ROOM, Math.max(g.min, 2)) - room.players.length);
   $('lb-players').innerHTML = playerRows(room.players) + '<li class="empty">فاضي</li>'.repeat(empties);
   $('lb-host').hidden = !R.host; $('lb-guest').hidden = R.host;
+  if (!R.host) {
+    const chosen = (room.settings || {})[g.id] || {};
+    $('lb-set-sum').innerHTML = (g.settings || []).map(s => {
+      const v = chosen[s.key] ?? s.def; const o = s.options.find(o => String(o.v) === String(v));
+      return `<span class="chip">${K.esc(s.label)}: <b>${K.esc(o ? o.label : v)}</b></span>`;
+    }).join(' ');
+  }
   if (R.host) {
     const pick = $('lb-pick');
     pick.innerHTML = K.games.filter(x => !x.soon).map(x => `<option value="${x.id}"${x.id === room.game ? ' selected' : ''}>${K.esc(x.name)} (${x.min}–${x.max})</option>`).join('');
     const n = room.players.length;
     const ok = n >= g.min;
     $('btn-start').disabled = !ok;
+    const chosen = (room.settings || {})[g.id] || {};
+    $('lb-settings').innerHTML = (g.settings || []).map(s => `
+      <label class="set"><span>${K.esc(s.label)}</span><select data-set="${s.key}">${s.options.map(o =>
+        `<option value="${o.v}"${String(chosen[s.key] ?? s.def) === String(o.v) ? ' selected' : ''}>${K.esc(o.label)}</option>`).join('')}</select></label>`).join('');
+    $('lb-settings').querySelectorAll('select').forEach(sel => sel.onchange = () => {
+      const s = g.settings.find(x => x.key === sel.dataset.set);
+      const v = s.options.find(o => String(o.v) === sel.value).v;
+      room.settings = room.settings || {}; room.settings[g.id] = Object.assign({}, room.settings[g.id], { [s.key]: v });
+      pushState();
+    });
     $('lb-need').textContent = !ok ? `محتاجين ${g.min - n} لاعب كمان على الأقل.` : n > g.max ? `${g.name} بتاخد ${g.max} بس، أول ${g.max} في الليستة هيلعبوا.` : 'ابعت اللينك لصحابك، وابدأ لما الكل يدخل.';
   }
   show('s-lobby');
@@ -272,6 +318,9 @@ function ctxFor(){
     again: R.host ? () => startGame() : null,
     toLobby: R.host ? () => { room.phase = 'lobby'; pushState(); } : null,
     rerender: () => renderGame(),
+    emit: (data, toSeat) => send({ t:'g', from:PID, to: toSeat != null ? seats[toSeat] : undefined, data }),
+    now: () => Date.now() + (R.host ? 0 : (R.skew || 0)),
+    settings: room.settings && room.settings[room.game] || {},
   };
 }
 

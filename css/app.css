@@ -107,7 +107,10 @@ input{
 .players li.empty{border-style:dashed;color:var(--grid);justify-content:center}
 .seatdot{width:12px;height:12px;border-radius:50%;background:var(--pc,var(--ink));flex:none;opacity:.25}
 .seatdot.on{opacity:1}
-#lb-host{display:flex;flex-direction:column;gap:8px}
+#lb-host,#lb-guest{display:flex;flex-direction:column;gap:8px}
+.settings{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.settings .set{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:700;color:var(--muted)}
+.settings select{min-height:44px;font-size:15px;padding:8px 10px}
 .dot{width:10px;height:10px;border-radius:50%;background:var(--grid);display:inline-block;flex:none}
 .dot.on{background:var(--ok)}
 .dot.wait{background:var(--stamp);animation:pulse 1s ease-in-out infinite alternate}
