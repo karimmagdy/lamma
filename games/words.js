@@ -120,7 +120,7 @@ function draw(ctx){
 }
 
 Lamma.register({
-  id:'words', icon:'W', name:'Five Letters', blurb:'خمّن الكلمة الإنجليزي في 6 محاولات، وسابق صحابك.', min:1, max:8,
+  id:'words', cat:'en', icon:'W', name:'Five Letters', blurb:'خمّن الكلمة الإنجليزي في 6 محاولات، وسابق صحابك.', min:1, max:8,
   settings:[
     { key:'rounds', label:'عدد الكلمات', def:3, options:[{ v:1, label:'كلمة' }, { v:3, label:'3 كلمات' }, { v:5, label:'5 كلمات' }] },
     { key:'time', label:'وقت كل كلمة', def:180, options:[{ v:120, label:'دقيقتين' }, { v:180, label:'3 دقايق' }, { v:300, label:'5 دقايق' }] },

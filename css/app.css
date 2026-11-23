@@ -72,6 +72,8 @@ input{
 .brand h1{position:relative;width:max-content}
 .brand h1::after{content:"";position:absolute;inset:auto -6px 10px -6px;height:10px;background:var(--stamp);opacity:.25;border-radius:6px;transform:rotate(-2deg)}
 .games{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.gamegroups{display:flex;flex-direction:column;gap:10px}
+.gsect{font-size:18px;margin:6px 0 0;color:var(--muted)}
 .gcard{
   display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:start;
   background:var(--card);color:var(--ink);border:2.5px solid var(--ink);border-radius:16px;

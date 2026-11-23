@@ -68,7 +68,7 @@ function clock(){
 }
 
 Lamma.register({
-  id:'quiz', icon:'?', name:'Quiz Rush', blurb:'اكتب أكتر إجابات تقدر عليها قبل ما الوقت يخلص.', min:1, max:8,
+  id:'quiz', cat:'en', icon:'?', name:'Quiz Rush', blurb:'اكتب أكتر إجابات تقدر عليها قبل ما الوقت يخلص.', min:1, max:8,
   settings:[
     { key:'count', label:'عدد الكويزات', def:3, options:[{ v:1, label:'كويز' }, { v:3, label:'3 كويزات' }, { v:5, label:'5 كويزات' }] },
     { key:'time', label:'وقت كل كويز', def:90, options:[{ v:60, label:'دقيقة' }, { v:90, label:'دقيقة ونص' }, { v:150, label:'دقيقتين ونص' }] },

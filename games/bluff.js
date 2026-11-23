@@ -121,7 +121,7 @@ const normAR = s => String(s || '').trim().toLowerCase()
 const REVEAL_MS = 9000;
 
 function makeGame(cfg){
-  const { id, name, icon, blurb, bank, norm, T } = cfg;
+  const { id, cat, name, icon, blurb, bank, norm, T } = cfg;
 
   function startQ(S){
     const p = S.pub, store = S.secret[S.n];
@@ -169,7 +169,7 @@ function makeGame(cfg){
   function question(q){ return esc(q).replace('___', '<span class="bf-blank">_____</span>'); }
 
   Lamma.register({
-    id, icon, name, blurb, min:3, max:8,
+    id, cat, icon, name, blurb, min:3, max:8,
     settings:[
       { key:'count', label:T.count, def:8, options:[{ v:5, label:'5' }, { v:8, label:'8' }, { v:12, label:'12' }] },
       { key:'time', label:T.time, def:60, options:[{ v:45, label:'45 ثانية' }, { v:60, label:'60 ثانية' }, { v:90, label:'90 ثانية' }] },
@@ -291,7 +291,7 @@ const css = `
 let styled = false;
 function style(){ if (styled) return; styled = true; const s = document.createElement('style'); s.textContent = css; document.head.appendChild(s); }
 
-makeGame({ id:'fakeit', name:'Fake It', icon:'✎', blurb:'اكتب إجابة كدب تقنع بيها الباقي، ودوّر على الصح. (English)',
+makeGame({ id:'fakeit', cat:'en', name:'Fake It', icon:'✎', blurb:'اكتب إجابة كدب تقنع بيها الباقي، ودوّر على الصح. (English)',
   bank:EN, norm:normEN,
   T:{ dir:'ltr', count:'عدد الأسئلة', time:'وقت الكتابة', placeholder:'Write a believable fake answer', send:'Send', truthHit:'That\'s actually the real answer! Write a fake one.', yours:'Your fake', pick:'Which one is the real answer?' } });
 makeGame({ id:'fesher', name:'فِشَر', icon:'ف', blurb:'افشر إجابة تصدّقها الناس، ودوّر على الإجابة الصح. (عربي)',

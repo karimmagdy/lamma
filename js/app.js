@@ -50,11 +50,16 @@ function wait(title, sub, opts = {}){
 /* ---------- home ---------- */
 function renderHome(){
   $('my-name').value = myName;
-  $('game-list').innerHTML = K.games.map((g, i) => `
+  const card = (g, i) => `
     <button class="gcard${g.soon ? ' soon' : ''}" data-g="${g.id}" style="--gc:${K.color(i)}" ${g.soon ? 'aria-disabled="true"' : ''}>
       <span class="gico">${g.icon}</span><b>${K.esc(g.name)}</b><small>${K.esc(g.blurb)}</small>
       <span class="tag">${g.soon ? 'قريباً' : `${g.min}–${g.max} لاعبين`}</span>
-    </button>`).join('');
+    </button>`;
+  const groups = [['party', 'ألعاب اللمّة'], ['en', 'ألعاب إنجليزي']];
+  $('game-list').innerHTML = groups.map(([cat, title]) => {
+    const list = K.games.filter(g => (g.cat || 'party') === cat);
+    return list.length ? `<h3 class="gsect">${title}</h3><div class="games">${list.map((g, i) => card(g, i)).join('')}</div>` : '';
+  }).join('');
   show('s-home');
 }
 $('game-list').addEventListener('click', e => {

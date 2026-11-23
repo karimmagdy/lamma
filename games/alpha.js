@@ -3,11 +3,13 @@
    Each guess shows an arrow toward the answer and how far it is in dictionary order.
 
    Three levels, picked by the room creator:
-     easy   — 12 guesses, familiar answers, the first letter is given, distance as a number, 3 letter hints
-     medium — 8 guesses, familiar answers, distance as a number, 2 letter hints
-     hard   — 6 guesses, harder answers, only near / far (no number), 1 letter hint
+     easy   — 12 guesses, familiar answers, the first letter is given, distance as a number
+     medium — 8 guesses, familiar answers, distance as a number
+     hard   — 6 guesses, harder answers, only near / far (no number)
+   "Reveal letter" can be used once per word by one player only: whoever takes it first gets one more
+   letter, and it is locked for everyone else.
    Points for solving with k of G guesses: 50 + 70·(G−k)/(G−1), plus 30 / 20 / 10 for the first three,
-   minus 15 for each letter hint used (never below 10). */
+   minus 15 for the player who took the letter (never below 10). */
 (function(){
 const K = Lamma, esc = K.esc;
 
@@ -28,12 +30,28 @@ const CATS = [
   ['Nature', 'طبيعة', 'rain snow wind cloud sun storm river mountain ocean desert', 'volcano glacier tornado canyon lagoon meadow avalanche rainbow'],
   ['Birds', 'طيور', 'eagle parrot pigeon owl duck chicken penguin ostrich swan crow', 'flamingo pelican vulture sparrow peacock falcon hummingbird woodpecker'],
   ['Around the house', 'في البيت', 'chair table bed sofa door window lamp mirror shelf carpet', 'wardrobe cushion curtain drawer staircase chandelier armchair cupboard'],
+  ['Sea creatures', 'كائنات بحرية', 'fish shark whale dolphin octopus crab shrimp turtle seal jellyfish', 'starfish seahorse stingray lobster squid oyster barracuda manatee'],
+  ['Food', 'أكل', 'pizza burger pasta rice bread soup salad sandwich chicken cheese egg', 'lasagna omelette falafel risotto dumpling burrito kebab pancake'],
+  ['Desserts', 'حلويات', 'cake cookie chocolate candy donut icecream pie cupcake pudding', 'brownie waffle croissant tiramisu macaron cheesecake custard sorbet'],
+  ['Drinks', 'مشروبات', 'water milk tea coffee juice lemonade soda cocoa', 'smoothie milkshake espresso cappuccino latte yogurt mocha hibiscus'],
+  ['School things', 'حاجات المدرسة', 'pen pencil book bag ruler eraser desk board notebook teacher', 'stapler sharpener calculator compass highlighter backpack textbook marker'],
+  ['Tools', 'عِدّة', 'hammer saw drill nail screw ladder shovel rope brush scissors', 'wrench pliers chisel screwdriver crowbar trowel sandpaper wheelbarrow'],
+  ['Space', 'الفضاء', 'sun moon star planet earth mars rocket comet', 'galaxy nebula asteroid meteor jupiter saturn satellite telescope'],
+  ['Flowers and plants', 'زهور ونباتات', 'rose tree grass flower leaf cactus palm tulip', 'jasmine daisy orchid lily sunflower bamboo fern lavender'],
+  ['Shapes', 'أشكال', 'circle square triangle star heart line oval cube', 'rectangle pentagon hexagon octagon diamond pyramid cylinder sphere'],
+  ['Cities', 'مدن', 'cairo london paris rome tokyo dubai madrid berlin', 'istanbul barcelona alexandria marrakesh lisbon amsterdam vienna toronto'],
+  ['Feelings', 'مشاعر', 'happy sad angry scared tired bored excited calm', 'anxious jealous proud nervous lonely grateful curious embarrassed'],
+  ['Technology', 'تكنولوجيا', 'phone computer laptop mouse keyboard screen camera internet', 'printer router charger tablet headphones microphone speaker robot'],
+  ['Toys and games', 'لعب وألعاب', 'ball doll kite puzzle chess cards dice balloon', 'yoyo marbles domino frisbee teddy lego scooter skateboard'],
+  ['Family', 'العيلة', 'mother father sister brother baby uncle aunt cousin', 'grandmother grandfather nephew niece husband wife twin daughter'],
+  ['Places in town', 'أماكن في البلد', 'school hospital bank market park mosque church library', 'museum pharmacy bakery stadium airport cinema theater factory'],
+  ['Jewels and metals', 'معادن ومجوهرات', 'gold silver ring necklace diamond pearl watch bracelet', 'ruby emerald sapphire platinum copper bronze earring crown'],
 ].map(([en, ar, easy, hard]) => ({ en, ar, easy:easy.split(' '), hard:hard.split(' ') }));
 
 const LEVELS = {
-  easy:   { G:12, hints:3, first:true,  number:true,  pool:'easy' },
-  medium: { G:8,  hints:2, first:false, number:true,  pool:'easy' },
-  hard:   { G:6,  hints:1, first:false, number:false, pool:'hard' },
+  easy:   { G:12, first:true,  number:true,  pool:'easy' },
+  medium: { G:8,  first:false, number:true,  pool:'easy' },
+  hard:   { G:6,  first:false, number:false, pool:'hard' },
 };
 
 /* Dictionary-order position of a word, scaled to a 40,000-word dictionary.
@@ -68,7 +86,7 @@ function startRound(S){
   const ans = list[Math.floor(Math.random() * list.length)];
   store.cats.push(ci); store.ans = ans;
   Object.assign(p, { phase:'play', deadline:S.now + p.time * 1000, cat:cat.en, catAr:cat.ar, ans:null,
-    count:Array(S.n).fill(0), done:Array(S.n).fill(false), solvedOrder:[], gained:Array(S.n).fill(0), hintsUsed:Array(S.n).fill(0) });
+    count:Array(S.n).fill(0), done:Array(S.n).fill(false), solvedOrder:[], gained:Array(S.n).fill(0), hintsUsed:Array(S.n).fill(0), hintBy:-1 });
   for (let i = 0; i < S.n; i++) S.secret[i] = { rows:[], hint:L.first ? ans[0] : '' };
 }
 function endRound(S){ const p = S.pub; p.phase = 'between'; p.ans = S.secret[S.n].ans; p.deadline = S.now + BETWEEN_MS; }
@@ -152,9 +170,9 @@ function draw(ctx){
   }).join('') || '';
   const form = root.querySelector('#az-form'), tools = root.querySelector('#az-tools');
   form.hidden = !playing; tools.hidden = !playing;
-  const hl = L.hints - (p.hintsUsed[me] || 0);
-  const hb = root.querySelector('#az-hintbtn');
-  hb.textContent = `اكشف حرف (${hl})`; hb.disabled = hl <= 0 || ctx.busy;
+  const hb = root.querySelector('#az-hintbtn'), taken = p.hintBy >= 0;
+  hb.textContent = !taken ? 'اكشف حرف (مرة واحدة للأوضة)' : p.hintBy === me ? 'خدت الحرف' : `${names[p.hintBy] || 'حد'} خد الحرف`;
+  hb.disabled = taken || ctx.busy;
   root.querySelector('#az-hint').textContent = priv.hint ? `Starts with: ${priv.hint.toUpperCase()}…` : '';
   const rank = p.solvedOrder.indexOf(me);
   root.querySelector('#az-msg').textContent = flash || (p.phase !== 'play' ? '' : p.done[me] ? (rank >= 0 ? `حلّيتها! +${p.gained[me]}` : 'خلصت محاولاتك، استنى الباقي') : '');
@@ -177,7 +195,7 @@ function draw(ctx){
 }
 
 Lamma.register({
-  id:'alpha', icon:'↕', name:'A to Z', blurb:'خمّن الكلمة من الفئة، وكل تخمين يقولك هي قبله ولا بعده في الأبجدية وبعيدة قد إيه.', min:1, max:8,
+  id:'alpha', cat:'en', icon:'↕', name:'A to Z', blurb:'خمّن الكلمة من الفئة، وكل تخمين يقولك هي قبله ولا بعده في الأبجدية وبعيدة قد إيه.', min:1, max:8,
   settings:[
     { key:'level', label:'المستوى', def:'medium', options:[{ v:'easy', label:'سهل' }, { v:'medium', label:'متوسط' }, { v:'hard', label:'صعب' }] },
     { key:'rounds', label:'عدد الكلمات', def:3, options:[{ v:1, label:'كلمة' }, { v:3, label:'3 كلمات' }, { v:5, label:'5 كلمات' }] },
@@ -197,8 +215,8 @@ Lamma.register({
     const p = S.pub, ans = S.secret[S.n].ans, mine = S.secret[seat], L = LEVELS[p.level];
     if (p.phase !== 'play' || p.done[seat]) return;
     if (a.t === 'hint') {
-      if (p.hintsUsed[seat] >= L.hints || mine.hint.length >= ans.length - 1) return;
-      p.hintsUsed[seat]++; mine.hint = ans.slice(0, mine.hint.length + 1); return;
+      if (p.hintBy >= 0 || mine.hint.length >= ans.length - 1) return;
+      p.hintBy = seat; p.hintsUsed[seat] = 1; mine.hint = ans.slice(0, mine.hint.length + 1); return;
     }
     if (a.t !== 'guess') return;
     const w = clean(a.w);
