@@ -55,7 +55,7 @@ function renderHome(){
       <span class="gico">${g.icon}</span><b>${K.esc(g.name)}</b><small>${K.esc(g.blurb)}</small>
       <span class="tag">${g.soon ? 'قريباً' : `${g.min}–${g.max} لاعبين`}</span>
     </button>`;
-  const groups = [['party', 'ألعاب اللمّة'], ['en', 'ألعاب إنجليزي']];
+  const groups = [['party', 'ألعاب اللمّة'], ['en', 'ألعاب الكلمات · عربي و English']];
   $('game-list').innerHTML = groups.map(([cat, title]) => {
     const list = K.games.filter(g => (g.cat || 'party') === cat);
     return list.length ? `<h3 class="gsect">${title}</h3><div class="games">${list.map((g, i) => card(g, i)).join('')}</div>` : '';

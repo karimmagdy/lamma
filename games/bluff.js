@@ -1,4 +1,4 @@
-/* Fake It (English) and فِشَر (Arabic) — the bluffing game, 3–8 players.
+/* فِشَر / Fake It — Arabic or English, chosen in the lobby — the bluffing game, 3–8 players.
 
    Each question is a strange-but-true fact with a blank. Everyone writes a believable fake
    answer; then all the fakes and the real answer are shuffled and everyone votes for the
@@ -121,10 +121,12 @@ const normAR = s => String(s || '').trim().toLowerCase()
 const REVEAL_MS = 9000;
 
 function makeGame(cfg){
-  const { id, cat, name, icon, blurb, bank, norm, T } = cfg;
+  const { id, cat, name, icon, blurb, langs } = cfg;
+  let bank, norm, T;
+  const use = p => (({ bank, norm, T } = langs[p && p.lang === 'en' ? 'en' : 'ar']), p);
 
   function startQ(S){
-    const p = S.pub, store = S.secret[S.n];
+    const p = use(S.pub), store = S.secret[S.n];
     let pool = bank.map((_, i) => i).filter(i => !store.used.includes(i)); if (!pool.length) pool = bank.map((_, i) => i);
     const qi = pool[Math.floor(Math.random() * pool.length)];
     store.used.push(qi); store.qi = qi; store.lies = {};
@@ -133,7 +135,7 @@ function makeGame(cfg){
     for (let i = 0; i < S.n; i++) S.secret[i] = null;
   }
   function startVote(S){
-    const p = S.pub, store = S.secret[S.n], truth = bank[store.qi][1];
+    const p = use(S.pub), store = S.secret[S.n], truth = bank[store.qi][1];
     const opts = [{ text:truth, by:[], truth:true }];
     Object.entries(store.lies).forEach(([seat, text]) => {
       const same = opts.find(o => !o.truth && norm(o.text) === norm(text));
@@ -146,7 +148,7 @@ function makeGame(cfg){
     for (let i = 0; i < S.n; i++) { const own = shuffled.find(o => o.by.includes(i)); S.secret[i] = { own: own ? own.id : null }; }
   }
   function doReveal(S){
-    const p = S.pub, store = S.secret[S.n];
+    const p = use(S.pub), store = S.secret[S.n];
     const gained = Array(S.n).fill(0);
     Object.entries(store.votes).forEach(([seat, oid]) => {
       const o = store.opts.find(x => x.id === oid); if (!o) return;
@@ -171,13 +173,14 @@ function makeGame(cfg){
   Lamma.register({
     id, cat, icon, name, blurb, min:3, max:8,
     settings:[
-      { key:'count', label:T.count, def:8, options:[{ v:5, label:'5' }, { v:8, label:'8' }, { v:12, label:'12' }] },
-      { key:'time', label:T.time, def:60, options:[{ v:45, label:'45 ثانية' }, { v:60, label:'60 ثانية' }, { v:90, label:'90 ثانية' }] },
+      { key:'lang', label:'اللغة', def:'ar', options:[{ v:'ar', label:'عربي' }, { v:'en', label:'English' }] },
+      { key:'count', label:'عدد الأسئلة', def:8, options:[{ v:5, label:'5' }, { v:8, label:'8' }, { v:12, label:'12' }] },
+      { key:'time', label:'وقت الكتابة', def:60, options:[{ v:45, label:'45 ثانية' }, { v:60, label:'60 ثانية' }, { v:90, label:'90 ثانية' }] },
     ],
-    init(n, prev, set){ return { phase:'write', qn:1, count:+set.count || 8, time:+set.time || 60, q:'', deadline:0, points:Array(n).fill(0), wrote:[], voted:[], options:null, reveal:null }; },
+    init(n, prev, set){ return { lang:set.lang === 'en' ? 'en' : 'ar', phase:'write', qn:1, count:+set.count || 8, time:+set.time || 60, q:'', deadline:0, points:Array(n).fill(0), wrote:[], voted:[], options:null, reveal:null }; },
     secrets(pub, n){ const S = { pub, n, now:Date.now(), secret:[...Array(n).fill(null), { used:[], lies:{} }] }; startQ(S); return S.secret; },
     tick(S){
-      const p = S.pub;
+      const p = use(S.pub);
       if (p.phase === 'end' || S.now < p.deadline) return false;
       if (p.phase === 'write') startVote(S);
       else if (p.phase === 'vote') doReveal(S);
@@ -186,7 +189,7 @@ function makeGame(cfg){
       return true;
     },
     act(S, seat, a){
-      const p = S.pub, store = S.secret[S.n];
+      const p = use(S.pub), store = S.secret[S.n];
       if (a.t === 'lie' && p.phase === 'write' && typeof a.text === 'string') {
         const text = a.text.trim().slice(0, 60);
         if (!text) return;
@@ -204,7 +207,7 @@ function makeGame(cfg){
     },
     render(root, ctx){
       style(); view.lastCtx = ctx;
-      const p = ctx.pub, me = ctx.me, names = ctx.players.map(x => x.name), priv = ctx.priv || {};
+      const p = use(ctx.pub), me = ctx.me, names = ctx.players.map(x => x.name), priv = ctx.priv || {};
       const key = p.phase + ':' + p.qn;
       const fresh = view.key !== key || !root.querySelector('#bf-root');
       if (fresh) {
@@ -291,10 +294,9 @@ const css = `
 let styled = false;
 function style(){ if (styled) return; styled = true; const s = document.createElement('style'); s.textContent = css; document.head.appendChild(s); }
 
-makeGame({ id:'fakeit', cat:'en', name:'Fake It', icon:'✎', blurb:'اكتب إجابة كدب تقنع بيها الباقي، ودوّر على الصح. (English)',
-  bank:EN, norm:normEN,
-  T:{ dir:'ltr', count:'عدد الأسئلة', time:'وقت الكتابة', placeholder:'Write a believable fake answer', send:'Send', truthHit:'That\'s actually the real answer! Write a fake one.', yours:'Your fake', pick:'Which one is the real answer?' } });
-makeGame({ id:'fesher', name:'فِشَر', icon:'ف', blurb:'افشر إجابة تصدّقها الناس، ودوّر على الإجابة الصح. (عربي)',
-  bank:AR, norm:normAR,
-  T:{ dir:'rtl', count:'عدد الأسئلة', time:'وقت الكتابة', placeholder:'اكتب إجابة كدب تتصدّق', send:'ابعت', truthHit:'دي الإجابة الصح فعلاً! اكتب حاجة تانية كدب.', yours:'فشرتك', pick:'أنهي واحدة الإجابة الصح؟' } });
+makeGame({ id:'fesher', cat:'en', name:'فِشَر', icon:'ف', blurb:'افشر إجابة تصدّقها الناس، ودوّر على الإجابة الصح. عربي أو English.',
+  langs:{
+    en:{ bank:EN, norm:normEN, T:{ dir:'ltr', placeholder:'Write a believable fake answer', send:'Send', truthHit:'That is actually the real answer! Write a fake one.', yours:'Your fake', pick:'Which one is the real answer?' } },
+    ar:{ bank:AR, norm:normAR, T:{ dir:'rtl', placeholder:'اكتب إجابة كدب تتصدّق', send:'ابعت', truthHit:'دي الإجابة الصح فعلاً! اكتب حاجة تانية كدب.', yours:'فشرتك', pick:'أنهي واحدة الإجابة الصح؟' } },
+  } });
 })();

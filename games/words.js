@@ -1,4 +1,5 @@
-/* Five Letters — an English five-letter word race, 1–8 players.
+/* خمس حروف / Five Letters — a five-letter word race in Arabic or English, 1–8 players.
+   The room creator picks the language in the lobby.
    Everyone gets the same hidden word and six tries. After each guess a letter turns
    green (right letter, right spot), yellow (in the word, wrong spot) or grey (not in it).
    Other players see your colours as you go, never your letters.
@@ -8,6 +9,13 @@
 (function(){
 const K = Lamma, esc = K.esc;
 const ANSWERS = `about above abuse actor adapt adult after again agent agree ahead alarm album alert alike alive allow alone along alter among anger angle angry apart apple apply arena argue arise array aside asset audio avoid award aware badge baker basic beach beard beast begin being below bench birth black blade blame blank blast blend bless blind block blood bloom board boast bonus boost booth brain brand brave bread break brick bride brief bring broad brown brush build bunch burst buyer cabin cable camel candy cargo carry catch cause chain chair chalk charm chart chase cheap check cheek chess chest chief child chill choir civil claim class clean clear clerk click cliff climb clock close cloth cloud coach coast color couch could count court cover crack craft crane crash crazy cream crime crisp cross crowd crown crust curve cycle daily dance dealt death debut delay depth diary dirty doubt dough draft drain drama dream dress drift drink drive eagle early earth eight elbow elect empty enemy enjoy enter entry equal error event every exact exist extra faith false fancy fault feast fence fever field fifth fight final flame flash fleet flesh float flood floor flour fluid focus force forge forth forty forum found frame fresh front frost fruit funny ghost giant given glass globe glory grace grade grain grand grant grape grass grave great green greet grief grill group grown guard guess guest guide habit happy harsh heart heavy hello hobby honey horse hotel house human humor hurry ideal image index inner input issue ivory jelly jewel joint judge juice knife knock label labor large laser later laugh layer learn lemon level light limit linen liver lobby local logic loose lover lower loyal lucky lunch magic major maker mango march match maybe mayor medal media mercy metal meter might minor model money month moral motor mount mouse mouth movie music naval nerve never night noble noise north novel nurse ocean offer often olive onion opera orbit order organ other outer owner paint panel panic paper party pasta patch peace peach pearl phase phone photo piano piece pilot pitch pizza place plain plane plant plate plaza point polar pound power press price pride prime print prize proof proud prove pulse punch pupil queen quick quiet quilt quote radio raise rally ranch range rapid ratio reach react ready realm relax reply rider ridge right rival river roast robot rocky round route royal rural sadly salad sauce scale scene scope score scout sense serve seven shade shake shape share shark sharp sheep shelf shell shift shine shirt shock shoot short shout sight silly since skill skirt sleep slice slide smart smile smoke snack snake solid solve sorry sound south space spare speak speed spend spice spike spoon sport spray squad stack staff stage stair stamp stand start state steam steel steep stick still stock stone stool storm story stove straw strip study style sugar suite sunny super sweet swing sword table taste teach teeth thank theme thick thing think third throw thumb tiger tight timer tired title toast today tooth topic torch total touch tough tower toxic trace track trade trail train treat trend trial tribe trick truck truly trust truth twice uncle under union unity until upper upset urban usage usual valid value video virus visit vital vivid voice voter waste watch water whale wheat wheel where which while white whole woman world worry worth would write wrong yacht young youth zebra`.split(/\s+/).filter(w => /^[a-z]{5}$/.test(w));
+/* Arabic answers are stored normalised: أ إ آ → ا, ؤ → و, ئ ى → ي; ة and ء stay their own letters. */
+const AR = 'مدرسة مكتبة طاولة سيارة حديقة كتابة قراءة مدينة جزيرة سفينة طيارة مفتاح مصباح تفاحة بطيخة عصفور حمامة زرافة غزالة تمساح دلفين فراشة جامعة كنيسة ميدان صحراء بحيرة بركان سحابة عاصفة مطرقة مسمار منشار ملعقة سكينة فنجان ثلاجة غسالة مكنسة مروحة دولاب ستارة سجادة وسادة فستان جاكيت نظارة قلادة مهندس طبيبة ممرضة معلمة محامي غضبان شجاعة صداقة امانة عدالة نظافة ثقافة سياسة رياضة تجارة زراعة صناعة سياحة هندسة فلسفة رواية قصيدة حكاية اغنية حاسوب رسالة جريدة اذاعة فطيرة بسكوت زبادي زيتون طماطم بطاطس شوربة كنافة قطايف زلزال فيضان مسافر مسافة مساحة بطولة سباحة جمباز مدافع مهاجم جمهور نافذة بوابة سلالم تمثال اميرة معركة سلطان خليفة حكومة مملكة ممحاة مسطرة حقيبة كراسة سبورة طالبة تلميذ استاذ درجات شهادة دراسة ملابس حرارة برودة رطوبة جوهرة ياقوت مرجان بلورة صاروخ مركبة دراجة شاحنة عربية حافلة ميناء سنابل برسيم بستان مزرعة فلاحة حظيرة دجاجة خرفان جاموس ثعبان عقارب خنفسة ذبابة بعوضة يمامة نعامة ببغاء طاووس سنجاب حرباء موجات قبطان بحارة صنارة قرصان خريطة بوصلة عملاق ساحرة بادية قافلة واحات عنقود كمثري برقوق جوافة رمانة مانجو بندقة حلاوة تورتة ليمون نعناع ينسون فلفلة فلافل طعمية بامية خيارة كرنبة سبانخ كزبرة ريحان توليب زنبقة سوسنة بنفسج اوراق براعم طبيعة ساعات دقيقة ثانية اسبوع سنوات تاريخ بداية نهاية ظهيرة منتصف كواكب'.split(/\s+/).filter(w => w.length === 5);
+const LANG = {
+  en:{ words:ANSWERS, ok:/^[a-z]{5}$/, key:/^[a-z]$/i, dir:'ltr', keys:['qwertyuiop', 'asdfghjkl', '⏎zxcvbnm⌫'] },
+  ar:{ words:AR, ok:/^[ء-ي]{5}$/, key:/^[ء-ي]$/, dir:'rtl', keys:['ضصثقفغعهخحج', 'شسيبلاتنمكط', '⏎ءرةوزظدذ⌫'] },
+};
+const normKey = k => k.replace(/[أإآ]/g, 'ا').replace(/ؤ/g, 'و').replace(/[ئى]/g, 'ي');
 
 function colors(guess, word){
   const res = Array(5).fill('b'), left = {};
@@ -19,7 +27,8 @@ const BETWEEN_MS = 7000;
 
 function startRound(S){
   const p = S.pub, store = S.secret[S.n];
-  let pool = ANSWERS.filter(w => !store.used.includes(w)); if (!pool.length) pool = ANSWERS;
+  const words = LANG[p.lang].words;
+  let pool = words.filter(w => !store.used.includes(w)); if (!pool.length) pool = words;
   const word = pool[Math.floor(Math.random() * pool.length)];
   store.used.push(word); store.word = word;
   p.phase = 'play'; p.deadline = S.now + p.time * 1000; p.word = null;
@@ -31,7 +40,6 @@ function endRound(S){
   p.phase = 'between'; p.word = S.secret[S.n].word; p.deadline = S.now + BETWEEN_MS;
 }
 
-const KEYS = ['qwertyuiop', 'asdfghjkl', '⏎zxcvbnm⌫'];
 const css = `
 .wd-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .wd-time{font-family:var(--display);font-size:21px;min-width:58px;height:58px;border-radius:50%;border:3px solid var(--ink);display:grid;place-items:center;background:var(--card);font-variant-numeric:tabular-nums}
@@ -47,7 +55,7 @@ const css = `
 .wd-t.b{background:#8b8b85;border-color:#8b8b85;color:#fff}
 .wd-kb{display:flex;flex-direction:column;gap:6px;direction:ltr}
 .wd-kb div{display:flex;gap:4px;justify-content:center}
-.wd-kb button{flex:1;min-width:0;max-width:40px;min-height:50px;padding:0;font-size:17px;text-transform:uppercase;background:#d9d3c2;color:var(--ink);box-shadow:none;border-radius:8px}
+.wd-kb button{flex:1;min-width:0;max-width:40px;min-height:50px;padding:0;font-size:18px;text-transform:uppercase;background:#d9d3c2;color:var(--ink);box-shadow:none;border-radius:8px}
 .wd-kb button.wide{max-width:60px;flex:1.5;font-size:20px}
 .wd-kb button.g{background:#167a55;color:#fff} .wd-kb button.y{background:#d4a017;color:#fff} .wd-kb button.b{background:#8b8b85;color:#fff}
 .wd-others{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
@@ -56,7 +64,7 @@ const css = `
 .wd-mini i{width:9px;height:9px;border-radius:2px;background:var(--grid)}
 .wd-mini i.g{background:#167a55} .wd-mini i.y{background:#d4a017} .wd-mini i.b{background:#8b8b85}
 .wd-msg{text-align:center;font-weight:800;min-height:1.5em}
-.wd-word{font-family:var(--display);font-size:40px;letter-spacing:.2em;text-transform:uppercase;direction:ltr;text-align:center}
+.wd-word{font-family:var(--display);font-size:40px;letter-spacing:.2em;text-transform:uppercase;text-align:center}
 `;
 let styled = false;
 function style(){ if (styled) return; styled = true; const s = document.createElement('style'); s.textContent = css; document.head.appendChild(s); }
@@ -71,7 +79,7 @@ function press(k){
     if (typed.length < 5) { flash = 'الكلمة 5 حروف'; shake(); }
     else { ctx.act({ t:'guess', w:typed }); typed = ''; K.tick(560, .05); }
   }
-  else if (/^[a-z]$/i.test(k) && typed.length < 5) typed += k.toLowerCase();
+  else if (typeof k === 'string' && k.length === 1 && LANG[p.lang].key.test(normKey(k)) && typed.length < 5) typed += normKey(k).toLowerCase();
   draw(ctx);
 }
 function shake(){ const r = document.querySelector('.wd-row.cur'); if (r) { r.classList.remove('shake'); void r.offsetWidth; r.classList.add('shake'); } K.buzz(40); }
@@ -100,7 +108,9 @@ function draw(ctx){
   flash = '';
   root.querySelector('#wd-grid').innerHTML = grid.join('');
   root.querySelector('#wd-msg').textContent = msg;
-  root.querySelector('#wd-kb').innerHTML = KEYS.map(line => `<div>${[...line].map(k => `<button type="button" data-k="${k}" class="${'⏎⌫'.includes(k) ? 'wide' : keyState[k] || ''}" aria-label="${k === '⏎' ? 'Enter' : k === '⌫' ? 'مسح' : k}">${k}</button>`).join('')}</div>`).join('');
+  const Lg = LANG[p.lang];
+  root.querySelector('#wd-grid').style.direction = Lg.dir; root.querySelector('#wd-kb').style.direction = Lg.dir;
+  root.querySelector('#wd-kb').innerHTML = Lg.keys.map(line => `<div>${[...line].map(k => `<button type="button" data-k="${k}" class="${'⏎⌫'.includes(k) ? 'wide' : keyState[k] || ''}" aria-label="${k === '⏎' ? 'Enter' : k === '⌫' ? 'مسح' : k}">${k}</button>`).join('')}</div>`).join('');
   root.querySelector('#wd-kb').hidden = p.phase !== 'play' || p.done[me];
   root.querySelector('#wd-others').innerHTML = ctx.players.map((x, i) => i === me ? '' :
     `<div class="wd-other" style="--pc:${K.color(i)}"><div class="wd-mini">${[...Array(6)].map((_, r) => { const c = (p.rows[i] || [])[r]; return [0,1,2,3,4].map(j => `<i class="${c ? c[j] : ''}"></i>`).join(''); }).join('')}</div>${esc(x.name)}${p.solvedOrder.includes(i) ? ' ✓' : ''}</div>`).join('');
@@ -120,12 +130,13 @@ function draw(ctx){
 }
 
 Lamma.register({
-  id:'words', cat:'en', icon:'W', name:'Five Letters', blurb:'خمّن الكلمة الإنجليزي في 6 محاولات، وسابق صحابك.', min:1, max:8,
+  id:'words', cat:'en', icon:'خ', name:'خمس حروف', blurb:'خمّن الكلمة في 6 محاولات وسابق صحابك. عربي أو English.', min:1, max:8,
   settings:[
+    { key:'lang', label:'اللغة', def:'ar', options:[{ v:'ar', label:'عربي' }, { v:'en', label:'English' }] },
     { key:'rounds', label:'عدد الكلمات', def:3, options:[{ v:1, label:'كلمة' }, { v:3, label:'3 كلمات' }, { v:5, label:'5 كلمات' }] },
     { key:'time', label:'وقت كل كلمة', def:180, options:[{ v:120, label:'دقيقتين' }, { v:180, label:'3 دقايق' }, { v:300, label:'5 دقايق' }] },
   ],
-  init(n, prev, set){ return { phase:'play', round:1, rounds:+set.rounds || 3, time:+set.time || 180, deadline:0, points:Array(n).fill(0), rows:[], done:[], solvedOrder:[], gained:[] }; },
+  init(n, prev, set){ return { lang:set.lang === 'en' ? 'en' : 'ar', phase:'play', round:1, rounds:+set.rounds || 3, time:+set.time || 180, deadline:0, points:Array(n).fill(0), rows:[], done:[], solvedOrder:[], gained:[] }; },
   secrets(pub, n){ const S = { pub, n, now:Date.now(), secret:[...Array(n).fill(null), { used:[], word:null }] }; startRound(S); return S.secret; },
   tick(S){
     const p = S.pub;
@@ -138,8 +149,8 @@ Lamma.register({
   act(S, seat, a){
     const p = S.pub, word = S.secret[S.n].word, mine = S.secret[seat];
     if (a.t !== 'guess' || p.phase !== 'play' || p.done[seat]) return;
-    const w = String(a.w || '').toLowerCase();
-    if (!/^[a-z]{5}$/.test(w)) return;
+    const w = normKey(String(a.w || '').toLowerCase());
+    if (!LANG[p.lang].ok.test(w)) return;
     const c = colors(w, word);
     mine.rows.push({ w, c }); p.rows[seat].push(c);
     if (c === 'ggggg') {

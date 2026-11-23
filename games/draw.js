@@ -218,9 +218,9 @@ let lastChat = 0;
 Lamma.register({
   id:'draw', icon:'✎', name:'شخبطة', blurb:'واحد يرسم وكله يخمّن. اللي يعرفها أسرع ياخد نقط أكتر، والرسام كمان.', min:2, max:8,
   settings:[
+    { key:'lang',   label:'اللغة', def:'ar', options:[{ v:'ar', label:'عربي' }, { v:'en', label:'English' }] },
     { key:'rounds', label:'عدد الجولات', def:2, options:[{ v:1, label:'جولة' }, { v:2, label:'جولتين' }, { v:3, label:'3 جولات' }] },
     { key:'time',   label:'وقت الرسم',   def:80, options:[{ v:60, label:'60 ثانية' }, { v:80, label:'80 ثانية' }, { v:100, label:'100 ثانية' }, { v:120, label:'120 ثانية' }] },
-    { key:'lang',   label:'لغة الكلمات', def:'ar', options:[{ v:'ar', label:'عربي' }, { v:'en', label:'English' }] },
   ],
 
   init(n, prev, set){
